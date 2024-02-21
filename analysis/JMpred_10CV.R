@@ -26,6 +26,7 @@ ctr <- lmeControl(maxIter = 50000, msMaxIter = 50000, tolerance = 1e-6, niterEM 
 
 dflongi1 <- subset(dflongi,times!="NA" &  emo!="NA" & ADL!="NA" & bmi!="NA")
 dflongi1<-dflongi1[-which(dflongi1$times>dflongi1$totalTime),] #删去在事件发生之后的纵向数据记录
+dfsur <- dfsur[-which(dfsur$totalTime==0&dfsur$outcome==1),]
 dfsur1 <- subset(dfsur,marriage!="NA" & sex!="NA" & age!="NA" & residenc!="NA" & 
                    edu!="NA" & occ!="NA" & totalTime!="NA")
 dftimes <- as.data.frame(table(dflongi1$id))
