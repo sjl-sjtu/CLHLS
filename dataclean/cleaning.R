@@ -1037,3 +1037,46 @@ for(i in 1:nrow(dftimes)){
 dftimes$count <- dftimes$oN-dftimes$eN+1
 write.csv(dftimes,"dftimes.csv")
 
+
+######
+library(tidyverse)
+df <- read_csv("dfbmi.csv")
+df$X <- NULL
+dfl <- read_csv("dflongi.csv")
+dfl$X <- NULL
+dfll <- df[,c("id","year","bmi")]
+df <- merge(dfl,dfll,by=intersect(colnames(dfl),colnames(dfll)),all=TRUE)
+
+dfl <- read.csv("dftimes.csv")
+dfl$X <- NULL
+df <- merge(df,dfl,by=intersect(colnames(df),colnames(dfl)),all=TRUE)
+
+df[which(is.na(df$times)&((df$year>=df$enterT)&(df$year<=df$outT))),"times"] <- 
+  (df[which(is.na(df$times)&((df$year>=df$enterT)&(df$year<=df$outT))),"year"]
+   -df[which(is.na(df$times)&((df$year>=df$enterT)&(df$year<=df$outT))),"enterT"])*365
+library(tidyverse)
+df <- arrange(df,id,year)
+
+vf <- c("id","year","sex","age","residenc","edu","occ","marriage","ADL","emo","bmi","MSE","times","totalTime","outcome","outcomes")
+dfl <- df[,vf]
+write_csv(dfl,"dflongi2.csv")
+
+dfbase <- dfl[which(dfl$times==0),]
+q=dfbase$id[which(duplicated(dfbase$id))]
+dfo <- dfbase[which(dfbase$id%in%q),]
+length(unique(dfl$id))
+df[which(df$id%in%q),]
+write_csv(dfbase,"dfbase.csv")
+
+df <- read_csv("dfbase.csv")%>%
+  mutate(totalTime=totalTime/365,ADL=ADL/12)%>%
+  rename(res=residenc,mar=marriage,BMI=bmi,EMO=emo)%>% 
+  filter(totalTime!=0|outcome!=1)
+  
+dflongi <- read_csv("./dflongi2.csv")
+dflongi$outcomes <- car::recode(dflongi$outcomes,"'illness'='CI';'health'='non-CI'")
+dflongi$totalTime <- dflongi$totalTime/365
+dflongi$times <- dflongi$times/365
+dflongi$ADL <- dflongi$ADL/12
+dflongi$outcomes <- factor(dflongi$outcomes,levels = c("non-CI","CI"))
+dflongi <- dflongi %>% filter(totalTime!=0) %>%filter(times <= totalTime)
