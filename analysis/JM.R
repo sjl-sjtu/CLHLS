@@ -9,6 +9,8 @@ dflongi$totalTime <- dflongi$totalTime/365
 dflongi$times <- dflongi$times/365
 dflongi$ADL <- dflongi$ADL/12
 
+dfsur <- dfsur[-which(dfsur$totalTime==0),] #删去入组即患病或者删失
+
 set.seed(1)
 
 ctr <- lmeControl(maxIter = 50000, msMaxIter = 50000, tolerance = 1e-6, niterEM = 25000,

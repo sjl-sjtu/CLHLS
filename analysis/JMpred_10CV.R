@@ -10,6 +10,8 @@ dfsur$totalTime <- dfsur$totalTime/365
 dflongi$totalTime <- dflongi$totalTime/365
 dflongi$times <- dflongi$times/365
 dflongi$ADL <- dflongi$ADL/12
+
+dfsur <- dfsur[-which(dfsur$totalTime==0),] #删去入组即患病
 dfsur[which(dfsur$totalTime%%1==0&dfsur$totalTime!=0),"totalTime"] <-
   dfsur[which(dfsur$totalTime%%1==0&dfsur$totalTime!=0),"totalTime"]-0.01
 dflongi[which(dflongi$totalTime%%1==0&dflongi$totalTime!=0),"totalTime"] <-
@@ -17,24 +19,25 @@ dflongi[which(dflongi$totalTime%%1==0&dflongi$totalTime!=0),"totalTime"] <-
 dflongi[which(dflongi$times%%1==0&dflongi$times!=0),"times"] <-
   dflongi[which(dflongi$times%%1==0&dflongi$times!=0),"times"]-0.01
 
+
 #dflongi[which(dflongi$times>dflongi$totalTime &dflongi$outcome==0),"totalTime"] <- dflongi[which(dflongi$times>dflongi$totalTime &dflongi$outcome==0),"times"]
 
-set.seed(0)
+set.seed(10)
 
 ctr <- lmeControl(maxIter = 50000, msMaxIter = 50000, tolerance = 1e-6, niterEM = 25000,
                   msMaxEval = 200000,opt="optim")
 
-dflongi1 <- subset(dflongi,times!="NA" &  emo!="NA" & ADL!="NA" & bmi!="NA")
+#emotion
+dflongi1 <- subset(dflongi,times!="NA" &  emo!="NA")
 dflongi1<-dflongi1[-which(dflongi1$times>dflongi1$totalTime),] #删去在事件发生之后的纵向数据记录
-dfsur <- dfsur[-which(dfsur$totalTime==0&dfsur$outcome==1),]
 dfsur1 <- subset(dfsur,marriage!="NA" & sex!="NA" & age!="NA" & residenc!="NA" & 
                    edu!="NA" & occ!="NA" & totalTime!="NA")
 dftimes <- as.data.frame(table(dflongi1$id))
 p <- dfsur1$id
 q <- dflongi1$id
 w <- intersect(p,q)
-s <- dftimes$Var1[which(dftimes$Freq>=2)]
-w <- intersect(s,w)
+# s <- dftimes$Var1[which(dftimes$Freq>=2)]
+# w <- intersect(s,w)
 dfsur2 <- dfsur1[which(dfsur1$id %in% w),]
 dflongi2 <- dflongi1[which(dflongi1$id %in% w),]
 
@@ -85,14 +88,28 @@ stopCluster(cl)
 dfre_ <- data.frame(t(matrix(unlist(res_),ncol=V)))
 colnames(dfre_) <- c("auc1","auc2","auc3","auc4","auc5","auc6","auc7","auc8",
                      "auc9","auc10","auc11","auc12")
-write_csv(dfre_,"predict_detail_new.csv",col_names=TRUE)
+write_csv(dfre_,"predict_detail_full.csv",col_names=TRUE)
 p_ <- data.frame(t(colMeans(dfre_,na.rm = TRUE)))
 p_$Variabel <- "emo"
-write_csv(p_,"predict_new.csv",col_names=TRUE)
+write_csv(p_,"predict_full_new.csv",col_names=TRUE)
 
 q_ <- data.frame(t(apply(dfre_,2,sd,na.rm=TRUE)))
 q_$Variabel <- "emo"
-write_csv(q_,"predict_new_sd.csv",col_names=TRUE)
+write_csv(q_,"predict_full_sd_new.csv",col_names=TRUE)
+
+#ADL
+dflongi1 <- subset(dflongi,times!="NA" &  ADL!="NA")
+dflongi1<-dflongi1[-which(dflongi1$times>dflongi1$totalTime),] #删去在事件发生之后的纵向数据记录
+dfsur1 <- subset(dfsur,marriage!="NA" & sex!="NA" & age!="NA" & residenc!="NA" & 
+                   edu!="NA" & occ!="NA" & totalTime!="NA")
+p <- dfsur1$id
+q <- dflongi1$id
+w <- intersect(p,q)
+dftimes <- as.data.frame(table(dflongi1$id))
+# s <- dftimes$Var1[which(dftimes$Freq>=2)]
+# w <- intersect(s,w)
+dfsur2 <- dfsur1[which(dfsur1$id %in% w),]
+dflongi2 <- dflongi1[which(dflongi1$id %in% w),]
 
 V <- 10
 library(caret)
@@ -141,17 +158,30 @@ stopCluster(cl)
 dfre_ <- data.frame(t(matrix(unlist(res_),ncol=V)))
 colnames(dfre_) <- c("auc1","auc2","auc3","auc4","auc5","auc6","auc7","auc8",
                      "auc9","auc10","auc11","auc12")
-write_csv(dfre_,"predict_detail_new.csv",append = TRUE,col_names=TRUE)
+write_csv(dfre_,"predict_detail_full.csv",append = TRUE,col_names=TRUE)
 p_ <- data.frame(t(colMeans(dfre_,na.rm = TRUE)))
 p_$Variabel <- "ADL"
-write_csv(p_,"predict_new.csv",append = TRUE)
+write_csv(p_,"predict_full_new.csv",append = TRUE)
 
 q_ <- data.frame(t(apply(dfre_,2,sd,na.rm=TRUE)))
 q_$Variabel <- "ADL"
-write_csv(q_,"predict_new_sd.csv",append = TRUE)
+write_csv(q_,"predict_full_sd_new.csv",append = TRUE)
 
-
+#bmi
+dfbmi1 <- subset(dflongi,times!="NA" &  bmi!="NA")
+dfbmi1<-dfbmi1[-which(dfbmi1$times>dfbmi1$totalTime),] #删去在事件发生之后的纵向数据记录
+dfsur1 <- subset(dfsur,marriage!="NA" & sex!="NA" & age!="NA" & residenc!="NA" & 
+                   edu!="NA" & occ!="NA" & totalTime != "NA")
+p <- dfsur1$id
+q <- dfbmi1$id
+w <- intersect(p,q)
+dftimes <- as.data.frame(table(dfbmi1$id))
+# s <- dftimes$Var1[which(dftimes$Freq>=2)]
+# w <- intersect(s,w)
+dfsur2 <- dfsur1[which(dfsur1$id %in% w),]
+dflongi2 <- dfbmi1[which(dfbmi1$id %in% w),]
 dflongi2$bmi <- scale(dflongi2$bmi)
+
 V <- 10
 library(caret)
 folds <- createFolds(factor(dfsur2$outcome), k = V)
@@ -199,11 +229,11 @@ stopCluster(cl)
 dfre_ <- data.frame(t(matrix(unlist(res_),ncol=V)))
 colnames(dfre_) <- c("auc1","auc2","auc3","auc4","auc5","auc6","auc7","auc8",
                      "auc9","auc10","auc11","auc12")
-write_csv(dfre_,"predict_detail_new.csv",append = TRUE,col_names=TRUE)
+write_csv(dfre_,"predict_detail_full_new.csv",append = TRUE,col_names=TRUE)
 p_ <- data.frame(t(colMeans(dfre_,na.rm = TRUE)))
 p_$Variabel <- "bmi"
-write_csv(p_,"predict_new.csv",append = TRUE)
+write_csv(p_,"predict_full_new.csv",append = TRUE)
 
 q_ <- data.frame(t(apply(dfre_,2,sd,na.rm=TRUE)))
 q_$Variabel <- "bmi"
-write_csv(q_,"predict_new_sd.csv",append = TRUE)
+write_csv(q_,"predict_full_sd_new.csv",append = TRUE)
