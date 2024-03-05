@@ -9,43 +9,13 @@ library(RColorBrewer)
 library(patchwork)
 
 
-#####
-
+#####################
+# baseline descriptive
 df <- read_csv("dfbase.csv")%>%
   mutate(totalTime=totalTime/365,ADL=ADL/12)%>%
   rename(res=residenc,mar=marriage,BMI=bmi,EMO=emo)%>% 
   filter(totalTime!=0) #|outcome!=1)
 feat=c("sex","age","res","edu","occ","mar","EMO","ADL","BMI","outcome")
-
-library("corrplot")
-dat <- df%>%select(c(any_of(feat)))
-dat
-# png("sug1.png",res =300)
-mcor <- cor(dat,use="pairwise.complete.obs")   #计算相关系数
-q=wrap_elements(~corrplot(mcor,tl.cex=1,
-                          method="circle",
-                          type="upper",shade.col=NA,tl.col="black", 
-                          tl.offset = 0.7,tl.srt=90,cl.cex=1,
-                          cl.offset = 10,addCoef.col="black"))  #作图，调节图例字???
-
-mcor <- cor(dat,use="pairwise.complete.obs",method="spearman")   #计算相关系数
-q1 <- wrap_elements(~corrplot(mcor,tl.cex=1,method="circle",
-                              type="upper",shade.col=NA,
-                              tl.col="black", tl.offset = 0.7,
-                              tl.srt=90,cl.cex=1,cl.offset = 10,
-                              addCoef.col="black"))  #作图，调节图例字???
-q+q1+plot_annotation(tag_levels = 'A')
-ggsave("cor.png",dpi=600,width = 12,height=7)
-
-t.test(age~outcome,data=df)
-chisq.test(df$sex,df$outcome)
-chisq.test(df$res,df$outcome)
-t.test(edu~outcome,data=df)
-chisq.test(df$occ,df$outcome)
-chisq.test(df$mar,df$outcome)
-t.test(EMO~outcome,data=df)
-t.test(ADL~outcome,data=df)
-t.test(BMI~outcome,data=df)
 
 feat
 for (col in feat[c(1,3,5,6)]) {
@@ -82,6 +52,39 @@ table(dflongi$outcome)
 # table(dflongi1$n,dflongi1$outcome)
 
 
+### correlation
+library("corrplot")
+dat <- df%>%select(c(any_of(feat)))
+dat
+# png("sug1.png",res =300)
+mcor <- cor(dat,use="pairwise.complete.obs")   #计算相关系数
+q=wrap_elements(~corrplot(mcor,tl.cex=1,
+                          method="circle",
+                          type="upper",shade.col=NA,tl.col="black", 
+                          tl.offset = 0.7,tl.srt=90,cl.cex=1,
+                          cl.offset = 10,addCoef.col="black"))  #作图，调节图例字???
+
+mcor <- cor(dat,use="pairwise.complete.obs",method="spearman")   #计算相关系数
+q1 <- wrap_elements(~corrplot(mcor,tl.cex=1,method="circle",
+                              type="upper",shade.col=NA,
+                              tl.col="black", tl.offset = 0.7,
+                              tl.srt=90,cl.cex=1,cl.offset = 10,
+                              addCoef.col="black"))  #作图，调节图例字???
+q+q1+plot_annotation(tag_levels = 'A')
+ggsave("cor.png",dpi=600,width = 12,height=7)
+
+## baseline test
+t.test(age~outcome,data=df)
+chisq.test(df$sex,df$outcome)
+chisq.test(df$res,df$outcome)
+t.test(edu~outcome,data=df)
+chisq.test(df$occ,df$outcome)
+chisq.test(df$mar,df$outcome)
+t.test(EMO~outcome,data=df)
+t.test(ADL~outcome,data=df)
+t.test(BMI~outcome,data=df)
+
+### enroll and censoring
 dft <- read_csv("dftimes.csv")%>%
   filter(id%in%df$id)
 lapply(dft%>%select(eN,iN), table)
@@ -90,7 +93,8 @@ table(dft$eN) |> sum()
 table(dft$iN) |> sum()
 table(dft%>%filter(id%in%(df%>%filter(outcome==0)%>%pull(id)))%>%pull(oN)) |> sum()
 
-####
+#############
+### KM estimator
 fit <- survfit(Surv(totalTime, outcome) ~ sex, data = df)
 q1 <- ggsurvplot(fit, data = df, risk.table = F, pval = TRUE,
            pval.method = TRUE, surv.median.line="v",conf.int=T)+
@@ -112,6 +116,7 @@ q <- arrange_ggsurvplots(list(q1,q2,q3,q4),print = TRUE,  nrow=2)
 ggsave("KM.png",q,dpi=600,width = 11,height = 7)
 
 ####
+# longitudinal trend
 dflongi <- read_csv("./dflongi2.csv")
 library(car)
 dflongi$outcomes <- recode(dflongi$outcomes,"'illness'='CI';'health'='non-CI'")
@@ -172,21 +177,9 @@ p1+p2+p3+plot_annotation(tag_levels = 'a')
 ggsave("longiChange.pdf",dpi=600)
 # ggsave("longiChange.tiff",dpi=600)
 
-# #Granger
-# library(plm)
-# dflongi1 <- dflongi %>% drop_na(times,ADL,MSE) %>% 
-#   group_by(id) %>%
-#   summarise(n=n()) %>%
-#   ungroup()
-# table(dflongi1$n)
-# dflongi2 <- dflongi %>% drop_na(times,ADL,MSE) %>% 
-#   filter(id %in% (dflongi1%>%filter(n>=3)%>%pull(id)))
-# pdf_longi <- pdata.frame(dflongi2, index = c("id", "year"), 
-#                          drop.index = TRUE)
-# pgrangertest(MSE ~ ADL, data = pdf_longi, test = "Wbar")
-
 
 ###
+# repeated-measurement correlation
 library(rmcorr)
 dflongi <- read_csv("./dflongi2.csv")
 # dfl <- dflongi %>% filter(times==0) 
@@ -206,15 +199,7 @@ dflongi1 <- dflongi %>% drop_na(times,MSE,ADL) %>%
 dflongi2 <- dflongi %>% drop_na(times,MSE,ADL) %>% 
   filter(id %in% (dflongi1%>%filter(n>=3)%>%pull(id)))
 rc <- rmcorr(id,ADL,MSE,dflongi2)
-# png( 
-#   filename = "ADL_MSE.png", # 文件名称
-#   width = 3500,           # 宽
-#   height = 3000,          # 高
-#   units = "px",          # 单位
-#   bg = "white",          # 背景颜色
-#   res = 600)              # 分辨率
 q1 <- plot(rc, ylab = "CMMSE",cex.axis=1.5, cex.lab=1.5)
-# dev.off()
 rc
 
 dflongi1 <- dflongi %>% drop_na(times,MSE,emo) %>% 
@@ -224,15 +209,7 @@ dflongi1 <- dflongi %>% drop_na(times,MSE,emo) %>%
 dflongi2 <- dflongi %>% drop_na(times,MSE,emo) %>% 
   filter(id %in% (dflongi1%>%filter(n>=3)%>%pull(id)))
 rc1 <- rmcorr(id,emo,MSE,dflongi2)
-# png( 
-#   filename = "emo_MSE.png", # 文件名称
-#   width = 3500,           # 宽
-#   height = 3000,          # 高
-#   units = "px",          # 单位
-#   bg = "white",          # 背景颜色
-#   res = 600)              # 分辨率
 q2 <- plot(rc1,xlab="EMO", ylab = "CMMSE",cex.axis=1.5, cex.lab=1.5)
-# dev.off()
 rc1
 
 dflongi1 <- dflongi %>% drop_na(times,MSE,bmi) %>% 
@@ -242,15 +219,7 @@ dflongi1 <- dflongi %>% drop_na(times,MSE,bmi) %>%
 dflongi2 <- dflongi %>% drop_na(times,MSE,bmi) %>% 
   filter(id %in% (dflongi1%>%filter(n>=3)%>%pull(id)))
 rc3 <- rmcorr(id,bmi,MSE,dflongi2)
-png( 
-  filename = "BMI_MSE.png", # 文件名称
-  width = 3500,           # 宽
-  height = 3000,          # 高
-  units = "px",          # 单位
-  bg = "white",          # 背景颜色
-  res = 600)              # 分辨率
 q3 <- plot(rc3, xlab="BMI",ylab = "CMMSE",cex.axis=1.5, cex.lab=1.5)
-dev.off()
 rc3
 
 q1 <- wrap_elements(~plot(rc, xlab="ADL",ylab = "CMMSE",cex.axis=1.5, cex.lab=1.5))
@@ -261,6 +230,7 @@ ggsave("rmcorr.pdf",width=16, height = 8,dpi=600)
 ggsave("rmcorr.png",width=16, height = 8,dpi=600)
 
 ##########
+# Baseline Cox
 library(survival)
 library(survminer)
 
@@ -272,8 +242,6 @@ dflongi$times <- dflongi$times/365
 dflongi$ADL <- dflongi$ADL/12
 dflongi$outcomes <- factor(dflongi$outcomes,levels = c("non-CI","CI"))
   
-#dflongi[which(dflongi$totalTime==0&dflongi$outcome==0),"totalTime"] <- 2
-# dflongi <- dflongi%>%filter(totalTime!=0)
 dflongi <- dflongi[-which(dflongi$totalTime==0),]
 
 dfbase <- dflongi%>%filter(times==0) %>% 
@@ -286,8 +254,8 @@ fitbase
 p1 <- ggforest(fitbase,dfbase,main = "Baseline")
 ggsave("base.tiff",width = 6, height = 3.5,dpi=600)
 
+# time-varying cox
 dflongi <- dflongi%>%drop_na(times)%>%filter(times <= totalTime) %>% filter(totalTime!=0|outcome!=1)
-
 df <- dflongi %>% 
   drop_na(times) %>%
   mutate(outc = as.integer(outcome==1&times>=totalTime)) %>%
@@ -306,7 +274,8 @@ ggsave("tv.tiff",width = 6, height = 3.5,dpi=600)
 # p1/p2
 ggsave("surv.pdf",width = 8, height = 10,dpi=600)
 
-###
+##############
+# subgroup analysis on age and times
 dflongi <- read_csv("./dflongi2.csv")
 library(car)
 dflongi$outcomes <- car::recode(dflongi$outcomes,"'illness'='CI';'health'='non-CI'")
@@ -592,48 +561,9 @@ model_B <- gamm4::gamm4(BMI ~ 1+s(dyn_age), random=~(1|id), data = dfage_B)
 mgcv::plot.gam(model_A$gam,xlab="age (dynamic)",ylim=c(-3,2),ylab="BMI",main="non-CI")
 mgcv::plot.gam(model_B$gam,xlab="age (dynamic)",ylim=c(-3,2),ylab="BMI",main="CI")
 
-# dfn <- dflongi %>% 
-#   drop_na(times) %>%
-#   # group_by(id) %>%
-#   # mutate(t=seq(1,n())) %>%
-#   # ungroup() %>%
-#   mutate(outc = as.integer(outcome==1&times>=totalTime)) %>%
-#   select(id,times,sex,age,residenc,edu,occ,marriage,ADL,emo,bmi,outc,totalTime) %>%
-#   rename(EMO=emo,BMI=bmi,res=residenc,mar=marriage)
-# fit2 <- coxph(Surv(totalTime, outcome) ~
-#                    sex+age+res+edu+occ+mar+ADL+EMO+BMI,
-#                  data=dfn)
-# 
-# zph <- cox.zph(fitbase)
-# zph[7]
-# 
-# plot(zph[2],lwd=2)
-# abline(0,0, col=1,lty=3,lwd=2)
-# abline(h= fit2$coef[7], col=3, lwd=2, lty=2)
-
-
 
 ############
-# library(JMbayes)
-# dflongi1 <- dflongi %>% drop_na(times) %>% 
-#   group_by(id) %>%
-#   summarise(n=n()) %>%
-#   ungroup()
-# dflongi2 <- dflongi%>%filter(id %in% (dflongi1%>%filter(n>=2)%>%pull(id)))
-# dflongi2.id <- dfbase%>%filter(id %in% (dflongi1%>%filter(n>=2)%>%pull(id)))
-# 
-# MixedModelFit <- mvglmer(list(emo ~ times + (times | id),
-#                               bmi ~ times + (times | id),
-#                               ADL ~ times + (times | id)), data = dflongi2,
-#                          families = list(gaussian, gaussian,gaussian))
-# summary(MixedModelFit)
-# coxFit <- coxph(Surv(totalTime,event=outcome)~sex+age+residenc+edu+occ+marriage,
-#                 data=dflongi2.id,model = TRUE)
-# coxFit
-# JMFit <- mvJointModelBayes(MixedModelFit,coxFit,timeVar = "times",n.iter=30,seed=0)
-# JMFit
-
-############
+# Cox-MSMs causal inference
 dflongi <- read_csv("./dflongi2.csv")
 library(car)
 dflongi$outcomes <- recode(dflongi$outcomes,"'illness'='CI';'health'='non-CI'")
@@ -646,6 +576,11 @@ dflongi <- dflongi%>%filter(totalTime!=0)
 dflongi <- dflongi%>%filter(times <= totalTime)
 
 library(ipw)
+library(survival)
+summary(coxm)
+library(ggpubr)
+library(tableone)
+
 dflongi1 <- dflongi %>% drop_na() %>% 
   group_by(id) %>%
   summarise(n=n()) %>%
@@ -663,32 +598,20 @@ df <- dflongi2 %>%
 
 
 df$tstart <- ipw::tstartfun(id, t, as.data.frame(df[,c("id","t")]))
-# 
-# dfid <- df %>% drop_na() %>% filter(t==0)%>% pull(id)
-# df1 <- df%>% drop_na()%>%filter(id%in%dfid)
-
 temp <- ipwtm(exposure = ADL, family = "gaussian",
               numerator = ~sex+age+residenc+edu+occ+marriage, 
               denominator = ~emo+bmi+sex+age+residenc+edu+occ+marriage,
               id = id, tstart = tstart,
               timevar = t,type = "all",data=as.data.frame(df),
               corstr = "ar1")
-
 ipwplot(weights = temp$ipw.weights, timevar = df$t,
          binwidth = 1, main = "Stabilized weights for ADL",
          xlab = "follow-up",ylab="stabilized weights")
-
-library(survival)
 coxm <- coxph(Surv(tstart, t, outc) ~ ADL + cluster(id),
               data = df, weights = temp$ipw.weights)
-summary(coxm)
-
-library(ggpubr)
 data.frame(ipw=temp$ipw.weights,timevar=df$t) %>% 
   ggviolin(y="ipw",x="timevar",palette = "lancet",fill="timevar")
-library(tableone)
 ShowRegTable(coxm,digits = 3)
-
 
 temp <- ipwtm(exposure = emo, family = "gaussian",
               numerator = ~sex+age+residenc+edu+occ+marriage, 
@@ -722,8 +645,8 @@ data.frame(ipw=temp$ipw.weights,timevar=df$t) %>%
   ggviolin(y="ipw",x="timevar",palette = "lancet",fill="timevar")
 ShowRegTable(coxm,digits = 3)
 
-
-### subset
+### subgroup causal inference
+# sex subgroup
 df1 <- df %>% filter(sex==0)
 temp <- ipwtm(exposure = ADL, family = "gaussian",
               numerator = ~age+residenc+edu+occ+marriage, 
@@ -921,98 +844,8 @@ data.frame(ipw=temp$ipw.weights,timevar=df1$t) %>%
   ggviolin(y="ipw",x="timevar",palette = "lancet",fill="timevar")
 ShowRegTable(coxm,digits = 3)
 
-
-
-
-
-
-# df <- read_delim("causal.txt") %>%
-#   mutate(CI=sprintf("%.3f (%.3f,%.3f)",HR,L,U))
-# library(forestplot)
-# dt |> forestplot(labeltext = c(variable,HR,CI,P),
-#            mean=HR,
-#            lower=L,
-#            upper=U,
-#            zero=1,
-#            boxsize=0.01,
-#            lineheight = unit(7,'mm'),
-#            colgap=unit(7,'mm'),
-#            lwd.zero=0.5,
-#            lwd.ci=0.5, 
-#            col=fpColors(box='#458B00',
-#                         summary='#8B008B',
-#                         lines = 'black',
-#                         zero = 'red'),
-#            xlab="beta",
-#            lwd.xaxis = 0.5,
-#            txt_gp = fpTxtGp(ticks = gpar(cex = 0.85),
-#                             xlab  = gpar(cex = 0.8),
-#                             cex = 1),
-#            lty.ci = "solid",
-#            title = "Forestplot", 
-#            line.margin = 0.2,
-#            ci.vertices.height = 0.05,
-#            graph.pos=4) #|>
-#   # fp_set_style(box = "royalblue",
-#   #              line = "darkblue",
-#   #              summary = "royalblue") #|> 
-#   # fp_add_header(study = c("", "Study"),
-#   #               deaths_steroid = c("Deaths", "(steroid)"),
-#   #               deaths_placebo = c("Deaths", "(placebo)"),
-#   #               OR = c("", "OR"))
-# 
-# install.packages("forestploter")
-# 
-# library(grid)
-# library(forestploter)
-# 
-# tm <- forest_theme(base_size = 20,
-#                    refline_col = "red",
-#                    arrow_type = "closed",
-#                    footnote_col = "blue")
-# 
-# dt <- read_delim("causal.txt") %>%
-#   mutate(CI=sprintf("(%.3f,%.3f)",L,U))
-# dt$` ` <- paste(rep(" ", nrow(dt)), collapse = " ")
-# p <- forest(dt[,c(1,2,6,7,5)],
-#             est = dt$HR,
-#             lower = dt$L, 
-#             upper = dt$U,
-#             #sizes = dt$U-dt$L,
-#             ci_column = 4,
-#             ref_line = 1,
-#             # arrow_lab = c("Placebo Better", "Treatment Better"),
-#             #xlim = c(0, 4),
-#             #ticks_at = c(0.5, 1, 2, 3),
-#             # footnote = "This is the demo data. Please feel free to change\nanything you want.",
-#             theme = tm)
-# plot(p)
-
-
-# data("basdat")
-# data("timedat")
-# basdat[1:4,]
-# timedat$cd4.sqrt <- sqrt(timedat$cd4count)
-# timedat <- merge(timedat, basdat[,c("id","Ttb")], by = "id", all.x = TRUE)
-# timedat$tb.lag <- ifelse(with(timedat, !is.na(Ttb) & fuptime > Ttb), 1, 0)
-# times <- sort(unique(c(basdat$Ttb, basdat$Tend)))
-# startstop <- data.frame(
-#   id = rep(basdat$id, each = length(times)),
-#   fuptime = rep(times, nrow(basdat)))
-# startstop <- merge(startstop, basdat, by = "id", all.x = TRUE)
-# startstop <- startstop[with(startstop, fuptime <= Tend), ]
-# startstop$tstart <- tstartfun(id, fuptime, startstop)
-# startstop$tb <- ifelse(with(startstop, !is.na(Ttb) & fuptime >= Ttb),
-#                        + 1, 0)
-# startstop$tb.lag <- ifelse(with(startstop, !is.na(Ttb) & fuptime > Ttb),
-#                               + 1, 0)
-# startstop$event <- ifelse(with(startstop, !is.na(Tdeath) & fuptime >=
-#                                     + Tdeath), 1, 0)
-# cd4.lme <- lme(cd4.sqrt ~ fuptime + tb.lag, random = ~ fuptime | id,
-#                 data = timedat)
-# startstop$cd4.sqrt <- predict(cd4.lme, newdata = data.frame(id =
-#                                                                  + startstop$id, fuptime = startstop$fuptime, tb.lag = startstop$tb.lag))
-#df <- read_csv("./predict_10f.csv")
+################
+## plot performance
 df <- read_csv("predict_full_new.csv")
 df1 <- data.frame(t=rep(c(4,8,10),each=4),deltat=rep(c(2,5,7,10),times=3),auc=t(df[1,1:12]))
 df2 <- data.frame(t=rep(c(4,8,10),each=4),deltat=rep(c(2,5,7,10),times=3),auc=t(df[2,1:12]))
@@ -1053,16 +886,8 @@ p2 <- ggplot(dfa)+geom_point(aes(x=deltat,y=auc,colour=variable),size=1)+
   ggtitle("Bayesian joint model")
 ggsave("bjm.png", width = 5, height = 5, dpi = 600)
 
-
-
-t<-c(c(2,5,7,10))
-z1=c(0.7887408,0.7766274,0.7667983,0.7557138)
-z2=c(0.7944512,0.8211321,0.8358516,0.8535598)
-z3=c(0.7915430,0.7734627,0.7621138,0.7473239)
-z4=c(0.7983705,0.8243510,0.8358798,0.8511404)
-z5=c(0.7899332,0.7792529,0.7672427,0.7550594)
-z6=c(0.7945496,0.8245858,0.8414416,0.8578185)
-dfb <- data.frame(t=as.character(rep(t,3)),incident=c(z1,z3,z5),cumulative=c(z2,z4,z6))
+##
+dfb <- read_csv("base_pred.csv")
 library(reshape2)
 dfb <- melt(dfb,id.vars="t",variable.name="type",value.name = "AUC")
 dfb$t <- as.numeric(as.character(dfb$t))
