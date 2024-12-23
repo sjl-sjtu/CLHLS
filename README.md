@@ -11,5 +11,7 @@ I employed the following approaches to analyze the data:
 * dynamic-DeepHit (a deep survival model)
 * marginal structural Cox model for longitudinal causal inference
 
+You can find a detailed explication of these methods in the Methodology Appendix of the article.
+
 ### Reference
 [1] Sun, J., Deng, L., Li, Q. et al. Dynamic relations between longitudinal morphological, behavioral, and emotional indicators and cognitive impairment: evidence from the Chinese Longitudinal Healthy Longevity Survey. *BMC Public Health* **24**, 3516 (2024). <https://doi.org/10.1186/s12889-024-21072-w>
